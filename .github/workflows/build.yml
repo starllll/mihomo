@@ -61,21 +61,21 @@ jobs:
 
           # Go 1.26 with special patch can work on macOS 10.13 High Sierra
           # https://github.com/MetaCubeX/go/commits/release-branch.go1.26/
-          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
-          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64 }
-          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-v1 }
-          - { goos: darwin, goarch: amd64, goamd64: v2, output: amd64-v2 }
-          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64-v3 }
-          - { goos: darwin, goarch: arm64, output: arm64 }
+          # - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
+          # - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64 }
+          # - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-v1 }
+          # - { goos: darwin, goarch: amd64, goamd64: v2, output: amd64-v2 }
+          # - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64-v3 }
+          # - { goos: darwin, goarch: arm64, output: arm64 }
 
           # Go 1.26 with special patch can work on Windows 7
           # https://github.com/MetaCubeX/go/commits/release-branch.go1.26/
           # - { goos: windows, goarch: '386', output: '386' }
           # - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
-          - { goos: windows, goarch: amd64, goamd64: v3, output: amd64 }
+          # - { goos: windows, goarch: amd64, goamd64: v3, output: amd64 }
           # - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-v1 }
-          # - { goos: windows, goarch: amd64, goamd64: v2, output: amd64-v2 }
-          # - { goos: windows, goarch: amd64, goamd64: v3, output: amd64-v3 }
+          - { goos: windows, goarch: amd64, goamd64: v2, output: amd64-v2 }
+          - { goos: windows, goarch: amd64, goamd64: v3, output: amd64-v3 }
           # - { goos: windows, goarch: arm64, output: arm64 }
 
           # - { goos: freebsd, goarch: '386', output: '386' }
@@ -193,20 +193,6 @@ jobs:
     - name: Verify Go env
       run: go env
 
-      # TODO: remove after issue77731 fixed, see: https://github.com/golang/go/issues/77731
-    - name: Fix issue77731 for Golang1.26
-      if: ${{ matrix.jobs.goversion == '' }}
-      run: |
-        cd $(go env GOROOT)
-        patch --verbose -p 1 < $GITHUB_WORKSPACE/.github/patch/issue77731.patch
-
-      # TODO: remove after issue77975 fixed, see: https://github.com/golang/go/issues/77975
-    - name: Fix issue77975 for Golang1.26
-      if: ${{ matrix.jobs.goversion == '' }}
-      run: |
-        cd $(go env GOROOT)
-        patch --verbose -p 1 < $GITHUB_WORKSPACE/.github/patch/issue77975.patch
-
       # TODO: remove after issue77930 fixed, see: https://github.com/golang/go/issues/77930
     - name: Fix issue77930 for Golang1.26
       if: ${{ matrix.jobs.goversion == '' }}
@@ -319,6 +305,21 @@ jobs:
           --architecture ${{ matrix.jobs.pacman }} \
           mihomo=/usr/bin/mihomo
 
+    - name: Pack Golang Toolchain
+      if: ${{ matrix.jobs.goversion == '' && matrix.jobs.tarball == 'tarball' }}
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/toolchain/go
+        cp -r $(go env GOROOT)/* $GITHUB_WORKSPACE/toolchain/go/
+        cd $GITHUB_WORKSPACE/toolchain/
+        tar -czf $GITHUB_WORKSPACE/toolchain.tar.gz .
+        rm -rf $GITHUB_WORKSPACE/toolchain
+
+    - name: Pack GoMod Vendor
+      if: ${{ matrix.jobs.goversion == '' && matrix.jobs.tarball == 'tarball' }}
+      run: |
+        go mod vendor
+        tar -czf $GITHUB_WORKSPACE/vendor.tar.gz vendor
+
     - name: Save version
       run: |
         echo ${VERSION} > version.txt
@@ -334,6 +335,8 @@ jobs:
           mihomo*.rpm
           mihomo*.pkg.tar.zst
           mihomo*.zip
+          toolchain.tar.gz
+          vendor.tar.gz
           version.txt
           checksums.txt
 
