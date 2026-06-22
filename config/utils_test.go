@@ -6,6 +6,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestParseDNSCacheOption(t *testing.T) {
+	t.Run("default cache enabled when omitted", func(t *testing.T) {
+		raw := &RawConfig{DNS: RawDNS{
+			Enable:            true,
+			NameServer:        []string{"8.8.8.8"},
+			DefaultNameserver: []string{"8.8.8.8"},
+		}}
+		dnsCfg, err := parseDNS(raw, nil)
+		assert.NoError(t, err)
+		assert.True(t, dnsCfg.Cache)
+	})
+
+	t.Run("explicitly disable cache", func(t *testing.T) {
+		disable := false
+		raw := &RawConfig{DNS: RawDNS{
+			Enable:            true,
+			NameServer:        []string{"8.8.8.8"},
+			DefaultNameserver: []string{"8.8.8.8"},
+			Cache:             &disable,
+		}}
+		dnsCfg, err := parseDNS(raw, nil)
+		assert.NoError(t, err)
+		assert.False(t, dnsCfg.Cache)
+	})
+}
+
 func TestValidateDialerProxies(t *testing.T) {
 	testCases := []struct {
 		testName    string
