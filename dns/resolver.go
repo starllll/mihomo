@@ -166,18 +166,21 @@ func (r *Resolver) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, e
 
 	q := m.Question[0]
 	domain := msgToDomain(m)
-	msg, expireTime, hit := getMsgFromCache(r.cache, q)
-	if hit {
-		log.Debugln("[DNS] cache hit %s --> %s, expire at %s", domain, msgToLogString(msg), expireTime.Format("2006-01-02 15:04:05"))
-		now := time.Now()
-		if expireTime.Before(now) {
-			setMsgTTL(msg, uint32(1)) // Continue fetch
-			continueFetch = true
-		} else {
-			// updating TTL by subtracting common delta time from each DNS record
-			updateMsgTTL(msg, uint32(time.Until(expireTime).Seconds()))
+	if r.cache != nil {
+		cachedMsg, expireTime, hit := getMsgFromCache(r.cache, q)
+		if hit {
+			log.Debugln("[DNS] cache hit %s --> %s, expire at %s", domain, msgToLogString(cachedMsg), expireTime.Format("2006-01-02 15:04:05"))
+			now := time.Now()
+			if expireTime.Before(now) {
+				setMsgTTL(cachedMsg, uint32(1)) // Continue fetch
+				continueFetch = true
+			} else {
+				// updating TTL by subtracting common delta time from each DNS record
+				updateMsgTTL(cachedMsg, uint32(time.Until(expireTime).Seconds()))
+			}
+			msg = cachedMsg
+			return
 		}
-		return
 	}
 	return r.exchangeWithoutCache(ctx, m)
 }
@@ -201,7 +204,7 @@ func (r *Resolver) exchangeWithoutCache(ctx context.Context, m *D.Msg) (msg *D.M
 				return
 			}
 
-			if cache {
+			if cache && r.cache != nil {
 				putMsgToCache(r.cache, q, result)
 			}
 		}()
@@ -454,11 +457,15 @@ type Config struct {
 	FallbackLazyQuery    bool
 	Policy               []Policy
 	ProxyServerPolicy    []Policy
+	Cache                bool
 	CacheAlgorithm       string
 	CacheMaxSize         int
 }
 
 func (config Config) newCache() dnsCache {
+	if !config.Cache {
+		return nil
+	}
 	if config.CacheMaxSize == 0 {
 		config.CacheMaxSize = 4096
 	}
@@ -492,7 +499,7 @@ func NewResolverFromClient(client dnsClient) *Resolver {
 	return &Resolver{
 		ipv6:  true,
 		main:  []dnsClient{client},
-		cache: Config{}.newCache(),
+		cache: Config{Cache: true}.newCache(),
 	}
 }
 

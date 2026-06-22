@@ -160,6 +160,7 @@ type DNS struct {
 	ListenRoutingMark     int
 	EnhancedMode          C.DNSMode
 	DefaultNameserver     []dns.NameServer
+	Cache                 bool
 	CacheAlgorithm        string
 	CacheMaxSize          int
 	FakeIPRange           netip.Prefix
@@ -239,6 +240,7 @@ type RawDNS struct {
 	FakeIPFilterMode             C.FilterMode                        `yaml:"fake-ip-filter-mode" json:"fake-ip-filter-mode"`
 	FakeIPTTL                    int                                 `yaml:"fake-ip-ttl" json:"fake-ip-ttl"`
 	DefaultNameserver            []string                            `yaml:"default-nameserver" json:"default-nameserver"`
+	Cache                        *bool                               `yaml:"cache" json:"cache"`
 	CacheAlgorithm               string                              `yaml:"cache-algorithm" json:"cache-algorithm"`
 	CacheMaxSize                 int                                 `yaml:"cache-max-size" json:"cache-max-size"`
 	NameServerPolicy             *orderedmap.OrderedMap[string, any] `yaml:"nameserver-policy" json:"nameserver-policy"`
@@ -1408,6 +1410,11 @@ func parseDNS(rawCfg *RawConfig, ruleProviders map[string]P.RuleProvider) (*DNS,
 		return nil, fmt.Errorf("if “respect-rules” is turned on, “proxy-server-nameserver” cannot be empty")
 	}
 
+	cacheEnabled := true
+	if cfg.Cache != nil {
+		cacheEnabled = *cfg.Cache
+	}
+
 	dnsCfg := &DNS{
 		Enable:            cfg.Enable,
 		Listen:            cfg.Listen,
@@ -1418,6 +1425,7 @@ func parseDNS(rawCfg *RawConfig, ruleProviders map[string]P.RuleProvider) (*DNS,
 		UseHosts:          cfg.UseHosts,
 		UseSystemHosts:    cfg.UseSystemHosts,
 		EnhancedMode:      cfg.EnhancedMode,
+		Cache:			   cacheEnabled,
 		CacheAlgorithm:    cfg.CacheAlgorithm,
 		CacheMaxSize:      cfg.CacheMaxSize,
 	}

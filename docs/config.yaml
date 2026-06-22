@@ -246,6 +246,7 @@ tunnels: # one line config
 
 # DNS 配置
 dns:
+  cache: true # 是否启用 DNS 结果缓存；设为 false 时将跳过缓存逻辑
   cache-algorithm: arc
   enable: false # 关闭将使用系统 DNS
   prefer-h3: false # 是否开启 DoH 支持 HTTP/3，将并发尝试
